@@ -2,7 +2,7 @@
 
 import argparse
 
-from server import listener
+from server import server
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     parser.add_argument("port", type=int, help="port to bind")
     args = parser.parse_args()
 
-    listener.listener(port=args.port).serve_forever()
+    server.Server(port=args.port).serve_forever()
 
 if __name__ == '__main__':
     main()

@@ -5,7 +5,7 @@ import json
 from common import protocol
 
 
-class handler():
+class Handler:
 
     def __init__(self, server, socket, addr):
         self.server = server
@@ -13,28 +13,17 @@ class handler():
         self.addr = addr
         self.socket.setblocking(0)
         self.buf_size = 4096
-        self.__verbose = True
+        self.verbose = True
 
-        self.id = -1
-        self.room_id = -1
-        self.nickname = ""
-        self.connected = True
         self.keep_running = True
-        self.thread = threading.Thread(target=self.handle)
+        self.thread = threading.Thread(target=self.recv)
         self.thread.Daemon = True
         self.thread.start()
 
     def close(self):
         self.keep_running = False
-        self.server.exit(self.id)
-        self.broadcast_player_list(self.room_id)
-        self.broadcast_spectator_list(self.room_id)
-        self.broadcast_game(self.room_id)
-        if self in self.server.handlers:
-            self.server.handlers.remove(self)
-        self.socket.close()
 
-    def handle(self):
+    def recv(self):
         while self.keep_running and self.server.keep_running:
             try:
                 messages = list()
@@ -50,51 +39,60 @@ class handler():
                     message = self.socket.recv(self.buf_size).decode('utf-8')
 
                     # client is disconnected
-                    if len(message) == 0:
-                        self.__verbose and print(
+                    if not message:
+                        self.verbose and print(
                             "Client", str(self.addr),
                             "disconnected, exiting...")
                         self.close()
                         return
 
-                    self.__verbose and print(
-                        "Received", len(message), "bytes:", message.strip())
+                    # strip extra newline, continue if empty
+                    message = message.strip("\n")
+                    if not message:
+                        continue
+
                     messages.append(message)
+                    self.verbose and print(
+                        "Received", len(message), "bytes:", message)
 
                     # keep recv until PROTOCOL_END is received
                     if message.endswith(protocol.PROTOCOL_END):
                         break
 
-                self.recv("".join(messages))
+                messages = "".join(messages)
+                self.handle(messages)
 
             except select.error:
                 pass
 
             except Exception as e:
-                print("Exception:", str(e))
+                print(e)
+                break
 
-    def recv(self, message):
+    def handle(self, messages):
         try:
-            message = message.split(protocol.PROTOCOL_END)
-            for msg in message:
-                if not msg:
-                    continue
+            idx = messages.find(protocol.PROTOCOL_END)
+            while idx >= 0:
+                # split message from PROTOCOL_END marker
+                message = messages[:idx+1]
+                messages = messages[idx+1:]
 
-                # try to load as json, check if action is in message
-                message = json.loads(msg)
-                if protocol.ACTION not in message:
+                # try to load as json, check if method is in message
+                message = json.loads(message)
+                if protocol.METHOD not in message:
                     return
 
-                # call responsible method
-                action = message[protocol.ACTION]
-                recv_action = getattr(self, "recv_" + action, None)
-                if callable(recv_action):
-                    recv_action(message)
+                # call corresponding method, if exists
+                method = message[protocol.METHOD]
+                handle_method = getattr(self, "handle_" + method, None)
+                if callable(handle_method):
+                    handle_method(message)
                 else:
-                    self.__verbose and print("Not implemented action:", action)
+                    self.verbose and print(
+                        "Error: Method '%s' not implemented" % method)
 
-        except ValueError:
-            pass
+                # continue find PROTOCOL_END
+                idx = messages.find(protocol.PROTOCOL_END)
 
-        except KeyError:
+        except (ValueError, KeyError) as e:
             pass
