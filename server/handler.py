@@ -11,17 +11,16 @@ class Handler:
         self.server = server
         self.socket = socket
         self.addr = addr
-        self.socket.setblocking(0)
         self.buf_size = 4096
         self.verbose = True
 
         self.keep_running = True
         self.thread = threading.Thread(target=self.recv)
-        self.thread.Daemon = True
         self.thread.start()
 
     def close(self):
         self.keep_running = False
+        self.socket.close()
 
     def recv(self):
         while self.keep_running and self.server.keep_running:
@@ -30,9 +29,8 @@ class Handler:
                 while self.keep_running and self.server.keep_running:
 
                     # check socket if it is ready to read
-                    socket_ready_to_read, _, _ = select.select(
-                        [self.socket], [], [], 0.5)
-                    if self.socket not in socket_ready_to_read:
+                    readable, _, _ = select.select([self.socket], [], [], 0.5)
+                    if self.socket not in readable:
                         continue
 
                     # receive the packet

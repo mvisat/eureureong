@@ -2,7 +2,7 @@
 
 import argparse
 
-from server import server
+from server.server import Server
 
 
 def main():
@@ -10,7 +10,7 @@ def main():
     parser.add_argument("port", type=int, help="port to bind")
     args = parser.parse_args()
 
-    server.Server(port=args.port).serve_forever()
+    Server(port=args.port).serve_forever()
 
 if __name__ == '__main__':
     main()

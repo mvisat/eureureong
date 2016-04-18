@@ -2,7 +2,7 @@ import socket
 import threading
 
 from common import protocol
-from server import handler
+from server.handler import Handler
 
 
 class Server:
@@ -26,15 +26,15 @@ class Server:
                 client_socket, client_addr = self.socket.accept()
 
                 self.verbose and print("Get connection from", str(client_addr))
-                h = handler.Handler(self, client_socket, client_addr)
-                self.handlers.append(h)
+                handler = Handler(self, client_socket, client_addr)
+                self.handlers.append(handler)
 
         except KeyboardInterrupt:
             self.verbose and print("Terminated by user")
             self.keep_running = False
 
         finally:
-            for h in self.handlers:
+            for handler in self.handlers:
                 h.close()
             self.socket.close()
 
