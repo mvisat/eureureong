@@ -22,7 +22,8 @@ class Client:
     def join(self, username):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_JOIN,
-            protocol.PLAYER_USERNAME: username
+            protocol.PLAYER_USERNAME: username,
+            protocol.PLAYER_PORT: self.connection.port
         })
         self.connection.server_send(data)
 

@@ -68,15 +68,26 @@ class Handler:
             self.connection.send(data)
             return
 
-        elif protocol.PLAYER_USERNAME not in message:
+        elif (protocol.PLAYER_USERNAME not in message or
+                protocol.PLAYER_PORT not in message):
             data = json.dumps({
                 protocol.STATUS: protocol.STATUS_ERROR,
-                protocol.DESCRIPTION: protocol.STATUS_ERROR_WRONG_REQ
+                protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
             })
             self.connection.send(data)
             return
 
-        username = message[protocol.PLAYER_USERNAME]
+        try:
+            username = str(message[protocol.PLAYER_USERNAME]).strip()
+            port = int(message[protocol.PLAYER_PORT])
+        except ValueError:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_ERROR,
+                protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
+            })
+            self.connection.send(data)
+            return
+
         if username in self.server.usernames:
             data = json.dumps({
                 protocol.STATUS: protocol.STATUS_FAIL,
@@ -93,29 +104,27 @@ class Handler:
             return
 
         with self.server.lock:
-            for i in range(self.server.MAX_PLAYER):
-                if self.server.id_taken[i]:
-                    continue
+            i = self.server.id_taken.index(False)
 
-                self.player_id = i
-                self.username = username
+            self.player_id = i
+            self.username = username
 
-                self.server.player_count += 1
-                self.server.ids.append(i)
-                self.server.usernames.add(username)
-                self.server.id_taken[i] = True
-                self.server.is_ready[i] = False
-                self.server.is_alive[i] = True
-                self.server.is_werewolf[i] = False
-                self.server.player_name[i] = username
-                self.server.player_connection[i] = self.connection
+            self.server.player_count += 1
+            self.server.ids.append(i)
+            self.server.usernames.add(username)
+            self.server.id_taken[i] = True
+            self.server.is_ready[i] = False
+            self.server.is_alive[i] = True
+            self.server.is_werewolf[i] = False
+            self.server.player_name[i] = username
+            self.server.player_connection[i] = self.connection
+            self.server.player_port[i] = port
 
-                data = json.dumps({
-                    protocol.STATUS: protocol.STATUS_OK,
-                    protocol.PLAYER_ID: i
-                })
-                self.connection.send(data)
-                break
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.PLAYER_ID: self.player_id
+        })
+        self.connection.send(data)
 
     def handle_leave(self, message=None):
         if self.player_id is None:
@@ -141,10 +150,10 @@ class Handler:
 
             self.username = None
             self.player_id = None
-            data = json.dumps({
-                protocol.STATUS: protocol.STATUS_OK
-            })
-            self.connection.send(data)
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK
+        })
+        self.connection.send(data)
 
     def handle_ready(self, message=None):
         if self.player_id is None:
@@ -186,8 +195,8 @@ class Handler:
             clients = [{
                 protocol.PLAYER_ID: i,
                 protocol.PLAYER_IS_ALIVE: 1 if self.server.is_alive[i] else 0,
-                protocol.PLAYER_ADDRESS: None,
-                protocol.PLAYER_PORT: 0,
+                protocol.PLAYER_ADDRESS: self.connection.addr[0],
+                protocol.PLAYER_PORT: self.server.player_port[i],
                 protocol.PLAYER_USERNAME: self.server.player_name[i]
                 } for i in self.server.ids
             ]

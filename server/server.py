@@ -44,6 +44,7 @@ class Server:
         self.id_taken = [False] * self.MAX_PLAYER
         self.player_name = [None] * self.MAX_PLAYER
         self.player_connection = [None] * self.MAX_PLAYER
+        self.player_port = [None] * self.MAX_PLAYER
 
     def reset_game(self):
         self.is_playing = False
