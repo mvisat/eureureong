@@ -95,7 +95,7 @@ class Connection(threading.Thread):
                 # client is disconnected
                 if not message:
                     self.verbose and print(
-                        "Client", str(client_addr),
+                        "Client", str(self.addr),
                         "disconnected, exiting...")
                     break
 

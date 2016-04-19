@@ -12,6 +12,8 @@ class Handler:
         self.server = server
         self.connection = connection
 
+        self.player_id = -1
+
     def handle(self, messages):
         try:
             idx = messages.find(protocol.PROTOCOL_END)
@@ -78,6 +80,7 @@ class Handler:
                 if self.server.usernames[i]:
                     continue
 
+                self.player_id = i
                 self.server.usernames[i] = username
                 data = json.dumps({
                     protocol.STATUS: protocol.STATUS_OK,
@@ -85,3 +88,21 @@ class Handler:
                 })
                 self.connection.send(data)
                 break
+
+    def handle_leave(self, message):
+        # invalid player id
+        if self.player_id < 0 or self.player_id >= len(self.server.usernames):
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_FAIL,
+                protocol.DESCRIPTION: "You are not joined."
+            })
+            self.connection.send(data)
+            return
+
+        with self.server.lock:
+            self.server.usernames[self.player_id] = None
+            self.server.player_id = -1
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_OK
+            })
+            self.connection.send(data)

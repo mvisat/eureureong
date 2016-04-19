@@ -18,9 +18,12 @@ def main():
         while client.keep_running:
             i = int(input().strip())
             if i == 0:
-                client.register("visat")
+                client.join("visat")
+            elif i == 1:
+                client.leave()
     except Exception as e:
-        print(e)
+        client.close()
+
 
 if __name__ == "__main__":
     main()

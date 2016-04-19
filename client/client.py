@@ -16,10 +16,16 @@ class Client:
         self.handler = Handler(self)
         self.connection = Connection(self, self.handler, host, port)
 
-    def register(self, username):
+    def join(self, username):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_JOIN,
             protocol.PLAYER_USERNAME: username
+        })
+        self.connection.server_send(data)
+
+    def leave(self):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_LEAVE
         })
         self.connection.server_send(data)
 
@@ -52,7 +58,9 @@ class Connection:
 
         self.lock = threading.Lock()
         self.server_thread = threading.Thread(target=self.server_recv)
+        self.server_thread.start()
         self.thread = threading.Thread(target=self.recv)
+        self.thread.start()
 
     def close(self):
         self.keep_running = False
@@ -73,7 +81,7 @@ class Connection:
                     self.keep_running = False
                     break
 
-                self.verbose and print("recv_server:", data)
+                self.verbose and print("Recv server:", data)
 
             except select.error:
                 break
@@ -83,7 +91,7 @@ class Connection:
     def recv(self):
         while self.keep_running:
             try:
-                readable, _, _ = select.select([self.socket], [], [], sel.timeout)
+                readable, _, _ = select.select([self.socket], [], [], self.timeout)
                 if self.socket not in readable:
                     continue
 
@@ -93,7 +101,7 @@ class Connection:
                 if not data:
                     break
 
-                self.verbose and print("recv from", address, ":", data)
+                self.verbose and print("Recv from", address, ":", data)
 
             except select.error:
                 break
