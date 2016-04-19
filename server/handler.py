@@ -7,10 +7,12 @@ from common import protocol
 
 class Handler:
 
-    def __init__(self, server):
+    def __init__(self, server, connection):
+        self.verbose = True
         self.server = server
+        self.connection = connection
 
-    def handle(self, client_socket, messages):
+    def handle(self, messages):
         try:
             idx = messages.find(protocol.PROTOCOL_END)
             while idx >= 0:
@@ -37,3 +39,49 @@ class Handler:
 
         except (ValueError, KeyError) as e:
             pass
+
+    def handle_join(self, message):
+        if self.server.is_playing:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_FAIL,
+                protocol.DESCRIPTION: protocol.STATUS_FAIL_PLAYING
+            })
+            self.connection.send(data)
+            return
+
+        if protocol.PLAYER_USERNAME not in message:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_ERROR,
+                protocol.DESCRIPTION: protocol.STATUS_ERROR_WRONG_REQ
+            })
+            self.connection.send(data)
+            return
+
+        username = message[protocol.PLAYER_USERNAME]
+        if username in self.server.usernames:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_FAIL,
+                protocol.DESCRIPTION: protocol.STATUS_FAIL_PLAYER_EXISTS
+            })
+            self.connection.send(data)
+            return
+        elif not username:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_FAIL,
+                protocol.DESCRIPTION: "ga boleh kosong"
+            })
+            self.connection.send(data)
+            return
+
+        with self.server.lock:
+            for i in range(len(self.server.usernames)):
+                if self.server.usernames[i]:
+                    continue
+
+                self.server.usernames[i] = username
+                data = json.dumps({
+                    protocol.STATUS: protocol.STATUS_OK,
+                    protocol.PLAYER_ID: i
+                })
+                self.connection.send(data)
+                break

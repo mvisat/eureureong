@@ -16,9 +16,11 @@ def main():
     client = Client(args.host, args.port)
     try:
         while client.keep_running:
-            time.sleep(1)
-    except:
-        pass    
+            i = int(input().strip())
+            if i == 0:
+                client.register("visat")
+    except Exception as e:
+        print(e)
 
 if __name__ == "__main__":
     main()

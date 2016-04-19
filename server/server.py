@@ -11,7 +11,6 @@ class Server:
     def __init__(self, host='', port=9999):
         self.verbose = True
         self.keep_running = True
-        self.buf_size = 2048
         self.timeout = 1
 
         self.host = host
@@ -21,11 +20,16 @@ class Server:
         self.socket.bind((self.host, self.port))
         self.socket.listen(6)
 
-        self.handler = Handler(self)
         self.lock = threading.Lock()
         self.client_sockets = []
         self.client_addrs = []
-        self.threads = []
+        self.connections = []
+
+        self.MIN_PLAYER = 6
+        self.MAX_PLAYER = 8
+
+        self.is_playing = False
+        self.usernames = [None] * self.MAX_PLAYER
 
     def serve_forever(self):
         try:
@@ -41,34 +45,52 @@ class Server:
                 self.client_sockets.append(client_socket)
                 self.client_addrs.append(client_addr)
 
-                thread = threading.Thread(
-                    target=self._recv, args=(client_socket, client_addr))
-                self.threads.append(thread)
-                thread.start()
+                connection = Connection(self, client_socket, client_addr)
+                self.connections.append(connection)
+                connection.start()
 
         except KeyboardInterrupt:
             self.verbose and print("Terminated by user")
 
         finally:
             self.keep_running = False
-            for thread in self.threads:
-                thread.join()
+            for connection in self.connections:
+                connection.join()
             self.socket.close()
 
     def close(self):
         self.keep_running = False
 
-    def _recv(self, client_socket, client_addr):
+    def broadcast(self, message):
+        for connection in self.connections:
+            connection.send(message)
+
+
+class Connection(threading.Thread):
+
+    def __init__(self, server, client_socket, client_addr):
+        super().__init__()
+
+        self.verbose = True
+        self.buf_size = 2048
+        self.timeout = 1
+
+        self.server = server
+        self.socket = client_socket
+        self.addr = client_addr
+        self.handler = Handler(server, self)
+
+    def run(self):
         messages = []
-        while self.keep_running:
+        while self.server.keep_running:
             try:
                 # check socket if it is ready to read
-                readable, _, _ = select.select([client_socket], [], [], self.timeout)
-                if client_socket not in readable:
+                readable, _, _ = select.select([self.socket], [], [], self.timeout)
+                if self.socket not in readable:
                     continue
 
                 # receive the packet
-                message = client_socket.recv(self.buf_size)
+                message = self.socket.recv(self.buf_size)
 
                 # client is disconnected
                 if not message:
@@ -91,8 +113,7 @@ class Server:
                     continue
 
                 full_message = "".join(messages)
-                with self.lock:
-                    self.handler.handle(client_socket, full_message)
+                self.handler.handle(full_message)
                 messages.clear()
 
             except select.error:
@@ -102,9 +123,9 @@ class Server:
                 print(e)
                 break
 
-        client_socket.close()
+        self.socket.close()
 
-    def _send(self, client_socket, message):
+    def send(self, message):
         if isinstance(message, bytes):
             pass
         else:
@@ -113,13 +134,13 @@ class Server:
             message = message.encode()
 
         total_sent = 0
-        while self.keep_running and total_sent < len(message):
-            _, writable, _ = select.select([], [client_socket], [], self.timeout)
-            if client_socket not in writable:
+        while self.server.keep_running and total_sent < len(message):
+            _, writable, _ = select.select([], [self.socket], [], self.timeout)
+            if self.socket not in writable:
                 continue
 
-            print("Sending:", message)
-            sent = client_socket.send(message[total_sent:])
+            self.verbose and print("Sending:", message)
+            sent = self.socket.send(message[total_sent:])
             if sent == 0:
                 break
             total_sent += sent
