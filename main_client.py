@@ -22,6 +22,8 @@ def main():
             elif i == 1:
                 client.leave()
             elif i == 2:
+                client.ready()
+            elif i == 3:
                 client.client_address()
 
     except Exception as e:

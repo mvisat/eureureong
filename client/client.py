@@ -32,6 +32,12 @@ class Client:
         })
         self.connection.server_send(data)
 
+    def ready(self):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_READY
+        })
+        self.connection.server_send(data)
+
     def client_address(self):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
