@@ -84,8 +84,10 @@ class Server:
         self.keep_running = False
 
     def broadcast(self, message):
-        for connection in self.connections:
-            connection.send(message)
+        for pid in self.ids:
+            connection = self.player_connection[pid]
+            if connection:
+                connection.send(data)
 
     def start_game(self):
         if self.is_playing or self.player_count < self.MIN_PLAYER:
@@ -100,24 +102,24 @@ class Server:
             self.is_werewolf[candidate[x]] = True
             del candidate[x]
 
-        for player_id in self.ids:
+        for pid in self.ids:
             data = {
                 protocol.METHOD: protocol.METHOD_START,
                 protocol.TIME: self.time,
                 protocol.DESCRIPTION: protocol.DESC_GAME_START
             }
-            if self.is_werewolf[player_id]:
+            if self.is_werewolf[pid]:
                 friends = [
                     self.player_name[i]
                     for i in self.ids
-                    if i != player_id and self.is_werewolf[i]
+                    if i != pid and self.is_werewolf[i]
                 ]
                 data[protocol.ROLE] = protocol.ROLE_WEREWOLF
                 data[protocol.FRIEND] = friends
             else:
                 data[protocol.ROLE] = protocol.ROLE_CIVILIAN
 
-            connection = self.player_connection[player_id]
+            connection = self.player_connection[pid]
             if connection:
                 connection.send(data)
 
@@ -135,9 +137,7 @@ class Server:
             protocol.TIME: self.time,
             protocol.DAYS: self.day
         }
-        for connection in self.player_connection:
-            if connection:
-                connection.send(data)
+        self.broadcast(data)
 
 
 class Connection(threading.Thread):

@@ -16,6 +16,9 @@ class Client:
         self.handler = Handler(self)
         self.connection = Connection(self, self.handler, host, port)
 
+    def close(self):
+        self.connection.close()
+
     def join(self, username):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_JOIN,
@@ -29,8 +32,11 @@ class Client:
         })
         self.connection.server_send(data)
 
-    def close(self):
-        self.connection.close()
+    def client_address(self):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
+        })
+        self.connection.server_send(data)
 
 
 class Connection:

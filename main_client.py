@@ -21,7 +21,11 @@ def main():
                 client.join("visat")
             elif i == 1:
                 client.leave()
+            elif i == 2:
+                client.client_address()
+
     except Exception as e:
+        print(e)
         client.close()
 
 

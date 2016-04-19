@@ -180,3 +180,20 @@ class Handler:
             if (self.server.player_count >= self.server.MIN_PLAYER and
                     self.server.player_count == self.server.is_ready.count(True)):
                 self.server.start_game()
+
+    def handle_client_address(self, message=None):
+        with self.server.lock:
+            clients = [{
+                protocol.PLAYER_ID: i,
+                protocol.PLAYER_IS_ALIVE: 1 if self.server.is_alive[i] else 0,
+                protocol.PLAYER_ADDRESS: None,
+                protocol.PLAYER_PORT: 0,
+                protocol.PLAYER_USERNAME: self.server.player_name[i]
+                } for i in self.server.ids
+            ]
+        data = {
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.DESCRIPTION: protocol.DESC_CLIENT_LIST,
+            protocol.CLIENTS: clients
+        }
+        self.connection.send(data)
