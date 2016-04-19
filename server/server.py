@@ -2,6 +2,9 @@ import socket
 import select
 import threading
 
+import random
+import time
+
 from common import protocol
 from server.handler import Handler
 
@@ -25,11 +28,30 @@ class Server:
         self.client_addrs = []
         self.connections = []
 
+        self._init_game()
+        self.reset_game()
+
+        random.seed()
+
+    def _init_game(self):
         self.MIN_PLAYER = 6
         self.MAX_PLAYER = 8
+        self.MAX_WEREWOLF = 2
 
+        self.player_count = 0
+        self.ids = []
+        self.usernames = set()
+        self.id_taken = [False] * self.MAX_PLAYER
+        self.player_name = [None] * self.MAX_PLAYER
+        self.player_connection = [None] * self.MAX_PLAYER
+
+    def reset_game(self):
         self.is_playing = False
-        self.usernames = [None] * self.MAX_PLAYER
+        self.day = 0
+        self.time = protocol.TIME_NIGHT
+        self.is_ready = [False] * self.MAX_PLAYER
+        self.is_alive = [True] * self.MAX_PLAYER
+        self.is_werewolf = [False] * self.MAX_PLAYER
 
     def serve_forever(self):
         try:
@@ -64,6 +86,58 @@ class Server:
     def broadcast(self, message):
         for connection in self.connections:
             connection.send(message)
+
+    def start_game(self):
+        if self.is_playing or self.player_count < self.MIN_PLAYER:
+            return
+
+        self.verbose and print("Starting the game...")
+        self.is_playing = True
+
+        candidate = list(self.ids)
+        for i in range(self.MAX_WEREWOLF):
+            x = random.randint(0, len(candidate)-1)
+            self.is_werewolf[candidate[x]] = True
+            del candidate[x]
+
+        for player_id in self.ids:
+            data = {
+                protocol.METHOD: protocol.METHOD_START,
+                protocol.TIME: self.time,
+                protocol.DESCRIPTION: protocol.DESC_GAME_START
+            }
+            if self.is_werewolf[player_id]:
+                friends = [
+                    self.player_name[i]
+                    for i in self.ids
+                    if i != player_id and self.is_werewolf[i]
+                ]
+                data[protocol.ROLE] = protocol.ROLE_WEREWOLF
+                data[protocol.FRIEND] = friends
+            else:
+                data[protocol.ROLE] = protocol.ROLE_CIVILIAN
+
+            connection = self.player_connection[player_id]
+            if connection:
+                connection.send(data)
+
+        self.change_phase()
+
+    def change_phase(self):
+        if self.time == protocol.TIME_NIGHT:
+            self.time = protocol.TIME_DAY
+            self.day += 1
+        else:
+            self.time = protocol.TIME_NIGHT
+
+        data = {
+            protocol.METHOD: protocol.METHOD_CHANGE_PHASE,
+            protocol.TIME: self.time,
+            protocol.DAYS: self.day
+        }
+        for connection in self.player_connection:
+            if connection:
+                connection.send(data)
 
 
 class Connection(threading.Thread):
@@ -123,6 +197,7 @@ class Connection(threading.Thread):
                 print(e)
                 break
 
+        self.handler.handle_leave()
         self.socket.close()
 
     def send(self, message):
