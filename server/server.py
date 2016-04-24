@@ -1,6 +1,7 @@
 import socket
 import select
 import threading
+import json
 
 import random
 import time
@@ -88,7 +89,7 @@ class Server:
         for pid in self.ids:
             connection = self.player_connection[pid]
             if connection:
-                connection.send(data)
+                connection.send(message)
 
     def start_game(self):
         if self.is_playing or self.player_count < self.MIN_PLAYER:
@@ -204,10 +205,10 @@ class Connection(threading.Thread):
     def send(self, message):
         if isinstance(message, bytes):
             pass
-        else:
-            if not isinstance(message, str):
-                message = str(message)
+        elif isinstance(message, str):
             message = message.encode()
+        else:
+            message = json.dumps(message).encode()
 
         total_sent = 0
         while self.server.keep_running and total_sent < len(message):

@@ -4,6 +4,7 @@ Module containing protocol constants
 
 INVALID_ID = -1
 
+PROTOCOL_START = "{"
 PROTOCOL_END = "}"
 
 METHOD = "method"
