@@ -83,6 +83,14 @@ class Client:
         })
         self.connection.send(data, address)
 
+    def accept_proposal(self, proposal_id, kpu_id, address):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
+            protocol.PROPOSAL_ID: proposal_id,
+            protocol.KPU_ID, kpu_id
+        })
+        self.connection.send(data, address)
+
 
 class Connection:
 
