@@ -129,6 +129,17 @@ class Server:
         self.change_phase()
 
     def change_phase(self):
+        werewolves = [i for i in range(self.MAX_PLAYER) if self.is_alive[i] and self.is_werewolf[i]]
+        civilians = [i for i in range(self.MAX_PLAYER) if self.is_alive[i] and not self.is_werewolf[i]]
+        if len(werewolves) == 0:
+            self.game_over(protocol.ROLE_CIVILIAN)
+            self.close()
+            return
+        elif len(werewolves) >= len(civilians):
+            self.game_over(protocol.ROLE_WEREWOLF)
+            self.close()
+            return
+
         if self.time == protocol.TIME_NIGHT:
             self.time = protocol.TIME_DAY
             self.day += 1
@@ -142,6 +153,13 @@ class Server:
         }
         self.broadcast(data)
 
+    def game_over(self, winner):
+        data = {
+            protocol.METHOD: protocol.METHOD_GAME_OVER,
+            protocol.WINNER: winner,
+            protocol.DESCRIPTION: "Winner is %s." % (winner)
+        }
+        self.broadcast(data)
 
 class Connection(threading.Thread):
 
