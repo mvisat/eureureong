@@ -27,16 +27,18 @@ class Client:
         self.keep_running = False
         self.connection.close()
 
-    def server_recv(self):
-        while self.keep_running and not self.connection.server_messages:
+    def server_recv(self, timeout=1):
+        t = time.time()
+        while self.keep_running and not self.connection.server_messages and (time.time() - t) < timeout:
             time.sleep(self.poll_time)
         if self.connection.server_messages:
             return self.connection.server_messages.pop(0)
         else:
             return None
 
-    def recv(self):
-        while self.keep_running and not self.connection.messages:
+    def recv(self, timeout=1):
+        t = time.time()
+        while self.keep_running and not self.connection.messages and (time.time() - t) < timeout:
             time.sleep(self.poll_time)
         if self.connection.messages:
             return self.connection.messages.pop(0)
