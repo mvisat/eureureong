@@ -69,7 +69,8 @@ class Handler:
             return
 
         elif (protocol.PLAYER_USERNAME not in message or
-                protocol.PLAYER_PORT not in message):
+                protocol.PLAYER_UDP_ADDRESS not in message or
+                protocol.PLAYER_UDP_PORT not in message):
             data = json.dumps({
                 protocol.STATUS: protocol.STATUS_ERROR,
                 protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
@@ -79,7 +80,8 @@ class Handler:
 
         try:
             username = str(message[protocol.PLAYER_USERNAME]).strip()
-            port = int(message[protocol.PLAYER_PORT])
+            address = str(message[protocol.PLAYER_UDP_ADDRESS]).strip()
+            port = int(message[protocol.PLAYER_UDP_PORT])
         except ValueError:
             data = json.dumps({
                 protocol.STATUS: protocol.STATUS_ERROR,
@@ -118,6 +120,7 @@ class Handler:
             self.server.is_werewolf[i] = False
             self.server.player_name[i] = username
             self.server.player_connection[i] = self.connection
+            self.server.player_address[i] = address
             self.server.player_port[i] = port
 
         data = json.dumps({
@@ -195,14 +198,14 @@ class Handler:
             clients = [{
                 protocol.PLAYER_ID: i,
                 protocol.PLAYER_IS_ALIVE: 1 if self.server.is_alive[i] else 0,
-                protocol.PLAYER_ADDRESS: self.connection.addr[0],
+                protocol.PLAYER_ADDRESS: self.server.player_address[i],
                 protocol.PLAYER_PORT: self.server.player_port[i],
                 protocol.PLAYER_USERNAME: self.server.player_name[i]
                 } for i in self.server.ids
             ]
-        data = {
+        data = json.dumps({
             protocol.STATUS: protocol.STATUS_OK,
             protocol.DESCRIPTION: protocol.DESC_CLIENT_LIST,
             protocol.CLIENTS: clients
-        }
+        })
         self.connection.send(data)

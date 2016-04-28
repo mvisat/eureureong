@@ -38,6 +38,8 @@ PLAYER_ID = "player_id"
 PLAYER_IS_ALIVE = "is_alive"
 PLAYER_ADDRESS = "address"
 PLAYER_PORT = "port"
+PLAYER_UDP_ADDRESS = "udp_address"
+PLAYER_UDP_PORT = "udp_port"
 PLAYER_USERNAME = "username"
 
 VOTE_STATUS = "vote_status"

@@ -47,7 +47,8 @@ class Client:
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_JOIN,
             protocol.PLAYER_USERNAME: username,
-            protocol.PLAYER_PORT: self.connection.port
+            protocol.PLAYER_UDP_ADDRESS: self.connection.address,
+            protocol.PLAYER_UDP_PORT: self.connection.port
         })
         self.connection.server_send(data)
         return self.server_recv()
@@ -95,13 +96,14 @@ class Connection:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.connect((self.server_host, self.server_port))
         self.server_socket.setblocking(0)
+        self.address, _ = self.server_socket.getsockname()
 
         # randomize client udp port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind(('', 0))
-        self.host, self.port = self.socket.getsockname()
-        self.client.verbose and print("Listening UDP at %s:%d" % (self.host, self.port))
+        _, self.port = self.socket.getsockname()
+        self.client.verbose and print("Listening UDP at %s:%d" % (self.address, self.port))
 
         self.lock = threading.Lock()
         self.server_messages = []
