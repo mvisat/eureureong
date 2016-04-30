@@ -56,7 +56,7 @@ class Server:
         self.day = 0
         self.time = protocol.TIME_NIGHT
         self.is_ready = [False] * self.MAX_PLAYER
-        self.is_alive = [True] * self.MAX_PLAYER
+        self.is_alive = [False] * self.MAX_PLAYER
         self.is_werewolf = [False] * self.MAX_PLAYER
 
     def serve_forever(self):
@@ -147,6 +147,8 @@ class Server:
             self.time = protocol.TIME_DAY
             self.day += 1
             self.retry_vote = 2
+            self.selected_kpu_id = None
+            self.vote_kpu_id = [None] * self.MAX_PLAYER
         else:
             self.time = protocol.TIME_NIGHT
 
@@ -156,6 +158,9 @@ class Server:
             protocol.DAYS: self.day
         }
         self.broadcast(data)
+
+        if self.time == protocol.TIME_NIGHT:
+            self.vote_now()
 
     def kpu_selected(self, kpu_id):
         data = {

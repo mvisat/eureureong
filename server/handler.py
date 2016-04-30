@@ -229,7 +229,10 @@ class Handler:
         self.connection.send(data)
 
     def handle_accept_proposal(self, message):
-        if self.player_id is None:
+        if self.server.selected_kpu_id is not None:
+            return
+
+        elif self.player_id is None:
             data = json.dumps({
                 protocol.STATUS: protocol.STATUS_FAIL,
                 protocol.DESCRIPTION: protocol.DESC_NOT_JOINED
@@ -297,7 +300,7 @@ class Handler:
             self.server.is_alive[player_killed] = False
             self.server.change_phase()
         else:
-            self.server.vote_now()
+            self.server.vote_now()        
 
     def handle_vote_result_werewolf(self, message):
         self.handle_vote_result_civilian(message)

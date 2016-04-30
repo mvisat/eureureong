@@ -181,7 +181,7 @@ class Game(Client):
         vote_number = 0
         while True:
             vote_number += 1
-            # server doesn't send anything at night
+            # workaround, ignore vote_now
             if vote_number == 1 and voting_time == protocol.TIME_NIGHT:
                 pass
             else:
@@ -324,7 +324,7 @@ class Game(Client):
 
             last_clients = None
             ret = self.server_recv()
-            while ret[protocol.METHOD] != protocol.METHOD_GAME_OVER:
+            while True:
                 if not self.keep_running:
                     return
 
@@ -338,6 +338,9 @@ class Game(Client):
                                 print("A %s named %s has been killed!" % (role, username))
                 last_clients = self.clients
 
+                if ret[protocol.METHOD] == protocol.METHOD_GAME_OVER:
+                    break
+
                 print("Day: %d, Time: %s" % (ret[protocol.DAYS], ret[protocol.TIME]))
 
                 time_now = ret[protocol.TIME]
@@ -349,6 +352,13 @@ class Game(Client):
 
                 if not ret:
                     return
+                elif ret[protocol.METHOD] == protocol.METHOD_GAME_OVER:
+                    pass
+                # workaround, ignore vote_now
+                elif time_now == protocol.TIME_DAY:
+                    self.server_recv()
+
+            print("Game over!", ret[protocol.DESCRIPTION])
 
         except KeyboardInterrupt:
             pass
