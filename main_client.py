@@ -186,6 +186,8 @@ class Game(Client):
                 pass
             else:
                 ret = self.server_recv()
+                if not ret:
+                    return None
                 method = ret[protocol.METHOD]
                 if (method == protocol.METHOD_CHANGE_PHASE or
                         method == protocol.METHOD_GAME_OVER):

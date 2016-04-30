@@ -136,11 +136,9 @@ class Server:
         civilians = [i for i in range(self.MAX_PLAYER) if self.is_alive[i] and not self.is_werewolf[i]]
         if len(werewolves) == 0:
             self.game_over(protocol.ROLE_CIVILIAN)
-            self.close()
             return
         elif len(werewolves) >= len(civilians):
             self.game_over(protocol.ROLE_WEREWOLF)
-            self.close()
             return
 
         if self.time == protocol.TIME_NIGHT:
