@@ -11,8 +11,8 @@ from common import protocol
 
 class Client:
 
-    def __init__(self, host, port):
-        self.verbose = True
+    def __init__(self, host, port, verbose=None):
+        self.verbose = verbose
         self.keep_running = True
         self.poll_time = 0.1
 
@@ -296,7 +296,7 @@ class Connection:
 
     def send(self, message, address, unreliable=False):
         if unreliable and random.randint(1, 100) >= 75:
-            print("Send to %s:%d: Failed (unreliable)" % (address))
+            self.client.verbose and print("Send to %s:%d: Failed (unreliable)" % (address))
             return
 
         if not self._send(message, address):

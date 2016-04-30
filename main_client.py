@@ -11,8 +11,8 @@ from client.client import Client
 
 
 class Game(Client):
-    def __init__(self, host, port):
-        super().__init__(host, port)
+    def __init__(self, host, port, verbose=None):
+        super().__init__(host, port, verbose)
         self.proposal_seq = 0
         self.last_accepted_proposal_id = [0, 0]
         self.previous_accepted_kpu_id = None
@@ -353,9 +353,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("host", type=str, help="server host")
     parser.add_argument("port", type=int, help="server port")
+    parser.add_argument("--verbose", "-v", action="count")
     args = parser.parse_args()
 
-    game = Game(args.host, args.port)
+    game = Game(args.host, args.port, args.verbose)
     game.play()
 
 if __name__ == "__main__":
