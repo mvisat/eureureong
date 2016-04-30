@@ -226,7 +226,7 @@ class Game(Client):
 
                 while True:
                     if not self.keep_running:
-                        return
+                        return None
                     try:
                         kill_id = int(input("Select player ID to kill: "))
                         if kill_id not in set_to_kill_id:
@@ -346,6 +346,9 @@ class Game(Client):
                     ret = self._voting(time_now)
                 elif time_now == protocol.TIME_NIGHT:
                     ret = self._voting(time_now)
+
+                if not ret:
+                    return
 
         except KeyboardInterrupt:
             pass
