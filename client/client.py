@@ -3,6 +3,7 @@ import select
 import threading
 import time
 import json
+import random
 
 from client.handler import Handler
 from common import protocol
@@ -27,18 +28,22 @@ class Client:
         self.keep_running = False
         self.connection.close()
 
-    def server_recv(self, timeout=1):
+    def server_recv(self, timeout=-1):
         t = time.time()
-        while self.keep_running and not self.connection.server_messages and (time.time() - t) < timeout:
+        while (self.keep_running and
+                not self.connection.server_messages and
+                ((time.time() - t) < timeout if timeout >= 0 else True)):
             time.sleep(self.poll_time)
         if self.connection.server_messages:
             return self.connection.server_messages.pop(0)
         else:
             return None
 
-    def recv(self, timeout=1):
+    def recv(self, timeout=-1):
         t = time.time()
-        while self.keep_running and not self.connection.messages and (time.time() - t) < timeout:
+        while (self.keep_running and
+                not self.connection.messages and
+                ((time.time() - t) < timeout if timeout >= 0 else True)):
             time.sleep(self.poll_time)
         if self.connection.messages:
             return self.connection.messages.pop(0)
@@ -87,10 +92,45 @@ class Client:
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
             protocol.PROPOSAL_ID: proposal_id,
-            protocol.KPU_ID, kpu_id
+            protocol.KPU_ID: kpu_id
         })
         self.connection.send(data, address)
 
+    def vote_civilian(self, player_id, address):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_VOTE_CIVILIAN,
+            protocol.PLAYER_ID: player_id
+        })
+        self.connection.send(data, address)
+
+    def vote_werewolf(self, player_id, address):
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_VOTE_WEREWOLF,
+            protocol.PLAYER_ID: player_id
+        })
+        self.connection.send(data, address)
+
+    def vote_result_civilian(self, vote_status, vote_result, player_killed=None):
+        data = {
+            protocol.METHOD: protocol.METHOD_VOTE_RESULT_CIVILIAN,
+            protocol.VOTE_STATUS: vote_status,
+            protocol.VOTE_RESULT: vote_result
+        }
+        if player_killed is not None:
+            data[protocol.PLAYER_KILLED] = player_killed
+        data = json.dumps(data)
+        self.connection.server_send(data)
+
+    def vote_result_werewolf(self, vote_status, vote_result, player_killed=None):
+        data = {
+            protocol.METHOD: protocol.METHOD_VOTE_RESULT_WEREWOLF,
+            protocol.VOTE_STATUS: vote_status,
+            protocol.VOTE_RESULT: vote_result
+        }
+        if player_killed is not None:
+            data[protocol.PLAYER_KILLED] = player_killed
+        data = json.dumps(data)
+        self.connection.server_send(data)
 
 class Connection:
 
@@ -254,6 +294,10 @@ class Connection:
         if not self._server_send(self.server_socket, message):
             self.client.keep_running = False
 
-    def send(self, message, address):
+    def send(self, message, address, unreliable=False):
+        if unreliable and random.randint(1, 100) >= 75:
+            print("Send to %s:%d: Failed (unreliable)" % (address))
+            return
+
         if not self._send(message, address):
             self.client.keep_running = False

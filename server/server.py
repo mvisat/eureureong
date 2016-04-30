@@ -48,6 +48,9 @@ class Server:
         self.player_address = [None] * self.MAX_PLAYER
         self.player_port = [None] * self.MAX_PLAYER
 
+        self.selected_kpu_id = None
+        self.vote_kpu_id = [None] * self.MAX_PLAYER
+
     def reset_game(self):
         self.is_playing = False
         self.day = 0
@@ -143,6 +146,7 @@ class Server:
         if self.time == protocol.TIME_NIGHT:
             self.time = protocol.TIME_DAY
             self.day += 1
+            self.retry_vote = 2
         else:
             self.time = protocol.TIME_NIGHT
 
@@ -150,6 +154,26 @@ class Server:
             protocol.METHOD: protocol.METHOD_CHANGE_PHASE,
             protocol.TIME: self.time,
             protocol.DAYS: self.day
+        }
+        self.broadcast(data)
+
+    def kpu_selected(self, kpu_id):
+        data = {
+            protocol.METHOD: protocol.METHOD_KPU_SELECTED,
+            protocol.KPU_ID: kpu_id
+        }
+        self.broadcast(data)
+
+    def vote_now(self):
+        if self.time == protocol.TIME_DAY:
+            if self.retry_vote > 0:
+                self.retry_vote -= 1
+            else:
+                self.change_phase()
+                return
+        data = {
+            protocol.METHOD: protocol.METHOD_VOTE_NOW,
+            protocol.PHASE: self.time
         }
         self.broadcast(data)
 
