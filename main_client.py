@@ -237,10 +237,8 @@ class Game(Client):
 
                 if voting_time == protocol.TIME_DAY:
                     self.vote_civilian(kill_id, (self.kpu_address, self.kpu_port))
-                    method_vote = protocol.METHOD_VOTE_CIVILIAN
-                else:
+                elif voting_time == protocol.TIME_NIGHT:
                     self.vote_werewolf(kill_id, (self.kpu_address, self.kpu_port))
-                    method_vote = protocol.METHOD_VOTE_WEREWOLF
 
             if self.kpu_id == self.player_id:
                 vote_count = {}
@@ -250,8 +248,14 @@ class Game(Client):
                     address, kill = address_kill
                     if protocol.METHOD not in kill:
                         continue
-                    elif kill[protocol.METHOD] != method_vote:
+
+                    if voting_time == protocol.TIME_DAY:
+                        method_vote = protocol.METHOD_VOTE_CIVILIAN
+                    elif voting_time == protocol.TIME_NIGHT:
+                        method_vote = protocol.METHOD_VOTE_WEREWOLF
+                    if kill[protocol.METHOD] != method_vote:
                         continue
+
                     kill_id = kill[protocol.PLAYER_ID]
                     if kill_id not in vote_count:
                         vote_count[kill_id] = 1
