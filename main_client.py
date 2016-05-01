@@ -94,6 +94,9 @@ class Game(Client):
             address_proposal = self.recv(timeout=0)
             if address_proposal:
                 address, proposal = address_proposal
+                if protocol.METHOD not in proposal:
+                    print("dafuq", proposal)
+                    continue
                 method = proposal[protocol.METHOD]
                 if method  == protocol.METHOD_PREPARE_PROPOSAL:
                     proposal_id = proposal[protocol.PROPOSAL_ID]
