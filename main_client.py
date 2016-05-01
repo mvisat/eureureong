@@ -349,6 +349,21 @@ class Game(Client):
                 if ret[protocol.METHOD] == protocol.METHOD_GAME_OVER:
                     break
 
+                if ret[protocol.TIME] == "day":
+                    if ret[protocol.DAYS] > 1:
+                        print("""Dan pagi hari telah menjelang, warga desa perlahan
+                        terbangun dari tidurnya. Semuanya karakter berubah menjadi
+                        rakyat biasa. Tadi malam, seseorang telah tewas.""")
+                    else:
+                        print("""Siang ini, warga desa mengetahui kabar bahwa
+                        terdapat beberapa werewolf yang sedang bersembunyi
+                        ditengah desa mereka. Untuk itu, warga desa pemilihan
+                        orang yang diduga keras sebagai werewolf dalam
+                              penyamaran.""")
+                else:
+                    print("""Saat ini, hari telah malam, warga desa yang
+                    kelelahan kini mulai perlahan terlelap. Werewolf pun
+                    beraksi...""")
                 print("Day: %d, Time: %s" % (ret[protocol.DAYS], ret[protocol.TIME]))
 
                 time_now = ret[protocol.TIME]

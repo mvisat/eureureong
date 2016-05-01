@@ -68,7 +68,12 @@ DESC_GAME_IS_PLAYING = "Game is currently running."
 DESC_USERNAME_EXISTS = "Username already exists."
 DESC_WAIT_TO_START = "Waiting for other players to start."
 DESC_WERE_READY = "You were ready."
-DESC_GAME_START = "Game is started."
+DESC_GAME_START = """Game is started.
+
+Pada suatu, terdapat desa yang aman dan tentram. Warga desa tersebut sangatlah bahagia dengan kemakmuran dan kedamaian yang mereka.
+Hingga suatu hari muncullah seseorang yang merubah segalanya. Kejahatan yang
+berada dalam kegelapan mendatangi mereka.
+"""
 DESC_CLIENT_LIST = "List of clients retrieved."
 DESC_ACCEPTED = "accepted"
 DESC_REJECTED = "rejected"
