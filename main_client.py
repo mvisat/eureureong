@@ -236,7 +236,9 @@ class Game(Client):
 
                 vote_max = 0
                 player_killed = None
+                vote_array = []
                 for kill_id, vote in vote_count.items():
+                    vote_array.append([kill_id, vote])
                     if vote > vote_max:
                         vote_max = vote
                         player_killed = kill_id
@@ -245,14 +247,14 @@ class Game(Client):
 
                 if player_killed is None:
                     if voting_time == protocol.TIME_DAY:
-                        self.vote_result_civilian(-1, vote_count)
+                        self.vote_result_civilian(-1, vote_array)
                     else:
-                        self.vote_result_werewolf(-1, vote_count)
+                        self.vote_result_werewolf(-1, vote_array)
                 else:
                     if voting_time == protocol.TIME_DAY:
-                        self.vote_result_civilian(1, vote_count, player_killed)
+                        self.vote_result_civilian(1, vote_array, player_killed)
                     else:
-                        self.vote_result_werewolf(1, vote_count, player_killed)
+                        self.vote_result_werewolf(1, vote_array, player_killed)
 
     def play(self):
         try:
