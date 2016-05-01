@@ -19,7 +19,7 @@ class Game(Client):
 
     def _check_consensus(self):
         kpu_selected = self.server_recv(timeout=0)
-        if kpu_selected:
+        if kpu_selected and protocol.METHOD in kpu_selected:
             method = kpu_selected[protocol.METHOD]
             if method == protocol.METHOD_KPU_SELECTED:
                 self.kpu_id = kpu_selected[protocol.KPU_ID]
