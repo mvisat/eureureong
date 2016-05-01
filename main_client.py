@@ -191,6 +191,8 @@ class Game(Client):
                 ret = self.server_recv()
                 if not ret:
                     return None
+                elif protocol.METHOD not in ret:
+                    return None
                 method = ret[protocol.METHOD]
                 if (method == protocol.METHOD_CHANGE_PHASE or
                         method == protocol.METHOD_GAME_OVER):
@@ -318,6 +320,8 @@ class Game(Client):
             ret = self.server_recv()
             if not self.keep_running:
                 return
+            ret[protocol.DAYS] = 1
+
             print(ret[protocol.DESCRIPTION])
             self.player_role = ret[protocol.ROLE]
             print("You are a", self.player_role)
@@ -328,7 +332,6 @@ class Game(Client):
                 self.player_friends = []
 
             last_clients = None
-            ret = self.server_recv()
             while True:
                 if not self.keep_running:
                     return

@@ -101,6 +101,9 @@ class Server:
 
         self.verbose and print("Starting the game...")
         self.is_playing = True
+        self.day = 1
+        self.time = protocol.TIME_DAY
+        self.retry_vote = 2
 
         candidate = list(self.ids)
         for i in range(self.MAX_WEREWOLF):
@@ -128,8 +131,6 @@ class Server:
             connection = self.player_connection[pid]
             if connection:
                 connection.send(data)
-
-        self.change_phase()
 
     def change_phase(self):
         werewolves = [i for i in range(self.MAX_PLAYER) if self.is_alive[i] and self.is_werewolf[i]]
