@@ -11,6 +11,7 @@ from client.client import Client
 
 
 class Game(Client):
+    TIMEOUT = 15
     def __init__(self, host, port, verbose=None):
         super().__init__(host, port, verbose)
         self.proposal_seq = 0
@@ -45,15 +46,17 @@ class Game(Client):
                 port = client[protocol.PLAYER_PORT]
                 self.prepare_proposal((self.proposal_seq, self.player_id), (address, port))
 
-            time.sleep(waiting_time)
-
             acceptor_responses = set()
             self.previous_accepted_kpu_id = self.player_id
             quorum = (len(self.clients) - 2) // 2 + 1
+            last_time = time.time()
             while len(acceptor_responses) < quorum:
+                time.sleep(self.poll_time)
+                if time.time() - last_time >= Game.TIMEOUT:
+                    break
                 acceptor_response = self.recv(timeout=0)
                 if not acceptor_response:
-                    break
+                    continue
                 acceptor, response = acceptor_response
 
                 # acceptor replies

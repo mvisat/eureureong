@@ -86,7 +86,7 @@ class Client:
             protocol.METHOD: protocol.METHOD_PREPARE_PROPOSAL,
             protocol.PROPOSAL_ID: proposal_id
         })
-        self.connection.send(data, address)
+        self.connection.send(data, address, unreliable=True)
 
     def accept_proposal(self, proposal_id, kpu_id, address):
         data = json.dumps({
@@ -94,7 +94,7 @@ class Client:
             protocol.PROPOSAL_ID: proposal_id,
             protocol.KPU_ID: kpu_id
         })
-        self.connection.send(data, address)
+        self.connection.send(data, address, unreliable=True)
 
     def vote_civilian(self, player_id, address):
         data = json.dumps({
