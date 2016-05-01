@@ -75,11 +75,14 @@ class Client:
         return self.server_recv()
 
     def client_address(self):
-        data = json.dumps({
-            protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
-        })
-        self.connection.server_send(data)
-        return self.server_recv()
+        while True:
+            data = json.dumps({
+                protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
+            })
+            self.connection.server_send(data)
+            ret = self.server_recv()
+            if protocol.CLIENTS in ret:
+                return ret
 
     def prepare_proposal(self, proposal_id, address):
         data = json.dumps({
@@ -88,11 +91,48 @@ class Client:
         })
         self.connection.send(data, address, unreliable=True)
 
+    def prepare_proposal_accept(self, proposal_id, previous_accepted_kpu_id, address):
+        data = {
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.DESCRIPTION: protocol.DESC_ACCEPTED,
+        }
+        if previous_accepted_kpu_id is not None:
+            data[protocol.KPU_PREV_ACCEPTED] = previous_accepted_kpu_id
+        self.connection.send(json.dumps(data), address, unreliable=True)
+
+    def prepare_proposal_reject(self, proposal_id, address):
+        data = {
+            protocol.STATUS: protocol.STATUS_FAIL,
+            protocol.DESCRIPTION: protocol.DESC_REJECTED
+        }
+        self.connection.send(json.dumps(data), address, unreliable=True)
+
     def accept_proposal(self, proposal_id, kpu_id, address):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
             protocol.PROPOSAL_ID: proposal_id,
             protocol.KPU_ID: kpu_id
+        })
+        self.connection.send(data, address, unreliable=True)
+
+    def accept_proposal_accept(self, kpu_id, address):
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.DESCRIPTION: protocol.DESC_ACCEPTED
+        })
+        self.connection.send(data, address, unreliable=True)
+
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_ACCEPTED_PROPOSAL,
+            protocol.KPU_ID: kpu_id,
+            protocol.DESCRIPTION: protocol.DESC_KPU_SELECTED
+        })
+        self.connection.server_send(data)
+
+    def accept_proposal_reject(self, address):
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_FAIL,
+            protocol.DESCRIPTION: protocol.DESC_REJECTED
         })
         self.connection.send(data, address, unreliable=True)
 
@@ -146,7 +186,16 @@ class Connection:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.connect((self.server_host, self.server_port))
         self.server_socket.setblocking(0)
-        self.address, _ = self.server_socket.getsockname()
+
+        # workaround to get local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 0))
+            self.address = s.getsockname()[0]
+        except:
+            self.address = '127.0.0.1'
+        finally:
+            s.close()
 
         # randomize client udp port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

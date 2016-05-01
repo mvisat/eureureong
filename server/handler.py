@@ -228,7 +228,7 @@ class Handler:
         })
         self.connection.send(data)
 
-    def handle_accept_proposal(self, message):
+    def handle_accepted_proposal(self, message):
         if self.server.selected_kpu_id is not None:
             return
 
@@ -300,7 +300,7 @@ class Handler:
             self.server.is_alive[player_killed] = False
             self.server.change_phase()
         else:
-            self.server.vote_now()        
+            self.server.vote_now()
 
     def handle_vote_result_werewolf(self, message):
         self.handle_vote_result_civilian(message)
