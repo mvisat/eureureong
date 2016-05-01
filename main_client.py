@@ -300,9 +300,7 @@ class Game(Client):
                 if not self.keep_running:
                     return
 
-                clients = self.client_address()
-                if protocol.CLIENTS in clients:
-                    self.clients = clients[protocol.CLIENTS]
+                self.clients = self.client_address()[protocol.CLIENTS]
                 if last_clients is not None:
                     if len(last_clients) == len(self.clients):
                         for i in range(len(self.clients)):

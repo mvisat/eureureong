@@ -75,11 +75,14 @@ class Client:
         return self.server_recv()
 
     def client_address(self):
-        data = json.dumps({
-            protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
-        })
-        self.connection.server_send(data)
-        return self.server_recv()
+        while True:
+            data = json.dumps({
+                protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
+            })
+            self.connection.server_send(data)
+            ret = self.server_recv()
+            if protocol.CLIENTS in ret:
+                return ret
 
     def prepare_proposal(self, proposal_id, address):
         data = json.dumps({
