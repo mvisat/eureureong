@@ -94,6 +94,8 @@ class Game(Client):
             address_proposal = self.recv(timeout=0)
             if address_proposal:
                 address, proposal = address_proposal
+                if protocol.METHOD not in proposal:
+                    continue
                 method = proposal[protocol.METHOD]
                 if method  == protocol.METHOD_PREPARE_PROPOSAL:
                     proposal_id = proposal[protocol.PROPOSAL_ID]
@@ -298,7 +300,9 @@ class Game(Client):
                 if not self.keep_running:
                     return
 
-                self.clients = self.client_address()[protocol.CLIENTS]
+                clients = self.client_address()
+                if protocol.CLIENTS in clients:
+                    self.clients = clients[protocol.CLIENTS]
                 if last_clients is not None:
                     if len(last_clients) == len(self.clients):
                         for i in range(len(self.clients)):

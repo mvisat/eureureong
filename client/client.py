@@ -120,7 +120,7 @@ class Client:
         self.connection.send(data, address, unreliable=True)
 
         data = json.dumps({
-            protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
+            protocol.METHOD: protocol.METHOD_ACCEPTED_PROPOSAL,
             protocol.KPU_ID: kpu_id,
             protocol.DESCRIPTION: protocol.DESC_KPU_SELECTED
         })
@@ -183,7 +183,16 @@ class Connection:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.connect((self.server_host, self.server_port))
         self.server_socket.setblocking(0)
-        self.address, _ = self.server_socket.getsockname()
+
+        # workaround to get local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('10.255.255.255', 0))
+            self.address = s.getsockname()[0]
+        except:
+            self.address = '127.0.0.1'
+        finally:
+            s.close()
 
         # randomize client udp port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
