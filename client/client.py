@@ -88,11 +88,48 @@ class Client:
         })
         self.connection.send(data, address, unreliable=True)
 
+    def prepare_proposal_accept(self, proposal_id, previous_accepted_kpu_id, address):
+        data = {
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.DESCRIPTION: protocol.DESC_ACCEPTED,
+        }
+        if previous_accepted_kpu_id is not None:
+            data[protocol.KPU_PREV_ACCEPTED] = previous_accepted_kpu_id
+        self.connection.send(json.dumps(data), address, unreliable=True)
+
+    def prepare_proposal_reject(self, proposal_id, address):
+        data = {
+            protocol.STATUS: protocol.STATUS_FAIL,
+            protocol.DESCRIPTION: protocol.DESC_REJECTED
+        }
+        self.connection.send(json.dumps(data), address, unreliable=True)
+
     def accept_proposal(self, proposal_id, kpu_id, address):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
             protocol.PROPOSAL_ID: proposal_id,
             protocol.KPU_ID: kpu_id
+        })
+        self.connection.send(data, address, unreliable=True)
+
+    def accept_proposal_accept(self, kpu_id, address):
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK,
+            protocol.DESCRIPTION: protocol.DESC_ACCEPTED
+        })
+        self.connection.send(data, address, unreliable=True)
+
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
+            protocol.KPU_ID: kpu_id,
+            protocol.DESCRIPTION: protocol.DESC_KPU_SELECTED
+        })
+        self.connection.server_send(data)
+
+    def accept_proposal_reject(self, address):
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_FAIL,
+            protocol.DESCRIPTION: protocol.DESC_REJECTED
         })
         self.connection.send(data, address, unreliable=True)
 

@@ -11,31 +11,32 @@ from client.client import Client
 
 
 class Game(Client):
-    TIMEOUT = 15
     def __init__(self, host, port, verbose=None):
         super().__init__(host, port, verbose)
         self.proposal_seq = 0
         self.last_accepted_proposal_id = [0, 0]
         self.previous_accepted_kpu_id = None
 
-    def _do_as_proposer(self, proposer_candidates, waiting_time=1):
-        while self.keep_running:
-            time.sleep(waiting_time)
-
-            # check if consensus has been reached
-            vote_now = self.server_recv(timeout=0)
-            if vote_now:
-                method = vote_now[protocol.METHOD]
-                if (method != protocol.METHOD_VOTE_NOW and
-                        method != protocol.METHOD_KPU_SELECTED):
-                    continue
-                self.kpu_id = vote_now[protocol.KPU_ID]
+    def _check_consensus(self):
+        kpu_selected = self.server_recv(timeout=0)
+        if kpu_selected:
+            method = kpu_selected[protocol.METHOD]
+            if method == protocol.METHOD_KPU_SELECTED:
+                self.kpu_id = kpu_selected[protocol.KPU_ID]
                 for client in self.clients:
                     if client[protocol.PLAYER_ID] == self.kpu_id:
                         self.kpu_address = client[protocol.PLAYER_ADDRESS]
                         self.kpu_port = client[protocol.PLAYER_PORT]
-                        return
+                        return True
                 assert(True)
+        return False
+
+    def _do_as_proposer(self, proposer_candidates, waiting_time=1):
+        while self.keep_running:
+            time.sleep(waiting_time)
+
+            if self._check_consensus():
+                return
 
             self.proposal_seq += 1
             for client in self.clients:
@@ -48,17 +49,15 @@ class Game(Client):
 
             acceptor_responses = set()
             self.previous_accepted_kpu_id = self.player_id
-            quorum = (len(self.clients) - 2) // 2 + 1
-            last_time = time.time()
+            quorum = (len(self.clients) - len(proposer_candidates)) // 2 + 1
             while len(acceptor_responses) < quorum:
-                time.sleep(self.poll_time)
-                if time.time() - last_time >= Game.TIMEOUT:
-                    break
-                acceptor_response = self.recv(timeout=0)
+                acceptor_response = self.recv(timeout=5)
                 if not acceptor_response:
-                    continue
+                    break
                 acceptor, response = acceptor_response
 
+                if protocol.METHOD in response:
+                    continue
                 # acceptor replies
                 if acceptor not in acceptor_responses:
                     status = response[protocol.STATUS]
@@ -89,20 +88,8 @@ class Game(Client):
         while self.keep_running:
             time.sleep(waiting_time)
 
-            # check if consensus has been reached
-            vote_now = self.server_recv(timeout=0)
-            if vote_now:
-                method = vote_now[protocol.METHOD]
-                if (method != protocol.METHOD_VOTE_NOW and
-                        method != protocol.METHOD_KPU_SELECTED):
-                    continue
-                self.kpu_id = vote_now[protocol.KPU_ID]
-                for client in self.clients:
-                    if client[protocol.PLAYER_ID] == self.kpu_id:
-                        self.kpu_address = client[protocol.PLAYER_ADDRESS]
-                        self.kpu_port = client[protocol.PLAYER_PORT]
-                        return
-                assert(True)
+            if self._check_consensus():
+                return
 
             address_proposal = self.recv(timeout=0)
             if address_proposal:
@@ -112,44 +99,19 @@ class Game(Client):
                     proposal_id = proposal[protocol.PROPOSAL_ID]
                     accepted = proposal_id >= self.last_accepted_proposal_id
                     if accepted:
-                        data = {
-                            protocol.STATUS: protocol.STATUS_OK,
-                            protocol.DESCRIPTION: protocol.DESC_ACCEPTED,
-                        }
-                        if self.previous_accepted_kpu_id is not None:
-                            data[protocol.KPU_PREV_ACCEPTED] = self.previous_accepted_kpu_id
+                        self.prepare_proposal_accept(proposal_id, self.previous_accepted_kpu_id, address)
                         self.last_accepted_proposal_id = proposal_id
                     else:
-                        data = {
-                            protocol.STATUS: protocol.STATUS_FAIL,
-                            protocol.DESCRIPTION: protocol.DESC_REJECTED
-                        }
-                    self.connection.send(json.dumps(data), address, unreliable=True)
+                        self.prepare_proposal_reject(proposal_id, address)
 
                 elif method == protocol.METHOD_ACCEPT_PROPOSAL:
                     proposal_id = proposal[protocol.PROPOSAL_ID]
                     accepted = proposal_id >= self.last_accepted_proposal_id
                     if accepted:
-                        data = json.dumps({
-                            protocol.STATUS: protocol.STATUS_OK,
-                            protocol.DESCRIPTION: protocol.DESC_ACCEPTED
-                        })
-                    else:
-                        data = json.dumps({
-                            protocol.STATUS: protocol.STATUS_FAIL,
-                            protocol.DESCRIPTION: protocol.DESC_REJECTED
-                        })
-                    self.connection.send(data, address, unreliable=True)
-
-                    if accepted:
-                        # send to learner
                         kpu_id = proposal[protocol.KPU_ID]
-                        data = json.dumps({
-                            protocol.METHOD: protocol.METHOD_ACCEPT_PROPOSAL,
-                            protocol.KPU_ID: kpu_id,
-                            protocol.DESCRIPTION: protocol.DESC_KPU_SELECTED
-                        })
-                        self.connection.server_send(data)
+                        self.accept_proposal_accept(kpu_id, address)
+                    else:
+                        self.accept_proposal_reject(address)
 
     def _leader_election(self):
         print("We now have leader election. Please wait...")
