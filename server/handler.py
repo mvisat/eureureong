@@ -230,6 +230,11 @@ class Handler:
 
     def handle_accepted_proposal(self, message):
         if self.server.selected_kpu_id is not None:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_FAIL,
+                protocol.DESCRIPTION: protocol.DESC_KPU_ALREADY_SELECTED
+            })
+            self.connection.send(data)
             return
 
         elif self.player_id is None:
@@ -247,6 +252,11 @@ class Handler:
             })
             self.connection.send(data)
             return
+
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK
+        })
+        self.connection.send(data)
 
         kpu_id = message[protocol.KPU_ID]
         self.server.vote_kpu_id[self.player_id] = kpu_id
@@ -287,15 +297,30 @@ class Handler:
             self.connection.send(data)
             return
 
-        vote_status = message[protocol.VOTE_STATUS]
+        try:
+            vote_status = int(message[protocol.VOTE_STATUS])
+        except ValueError:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_ERROR,
+                protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
+            })
+            self.connection.send(data)
+            return
+
+        if vote_status > 0 and protocol.PLAYER_KILLED not in message:
+            data = json.dumps({
+                protocol.STATUS: protocol.STATUS_ERROR,
+                protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
+            })
+            self.connection.send(data)
+            return
+
+        data = json.dumps({
+            protocol.STATUS: protocol.STATUS_OK
+        })
+        self.connection.send(data)
+
         if vote_status > 0:
-            if protocol.PLAYER_KILLED not in message:
-                data = json.dumps({
-                    protocol.STATUS: protocol.STATUS_ERROR,
-                    protocol.DESCRIPTION: protocol.DESC_WRONG_REQUEST
-                })
-                self.connection.send(data)
-                return
             self.server.player_killed = message[protocol.PLAYER_KILLED]
             self.server.is_alive[self.server.player_killed] = False
             self.server.change_phase()
