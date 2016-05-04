@@ -105,6 +105,10 @@ class Game(Client):
             str_player = " %s %d - %s" % ("✔" if eligible else "✘", cid, client[protocol.PLAYER_USERNAME])
             if not is_alive:
                 str_player += " (%s terbunuh)" % (role)
+            elif cid == self.player_id:
+                str_player += " (kamu)"
+            elif is_werewolf:
+                str_player += " (teman)"
             print(str_player)
 
         while True:
