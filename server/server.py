@@ -104,6 +104,7 @@ class Server:
         self.day = 1
         self.time = protocol.TIME_DAY
         self.retry_vote = 2
+        self.player_killed = None
 
         candidate = list(self.ids)
         for i in range(self.MAX_WEREWOLF):
@@ -156,6 +157,35 @@ class Server:
             protocol.TIME: self.time,
             protocol.DAYS: self.day
         }
+        if self.time == protocol.TIME_DAY:
+            data[protocol.DESCRIPTION] = (
+                "Dan pagi hari telah menjelang, warga desa perlahan "
+                "terbangun dari tidurnya. Semuanya karakter berubah menjadi "
+                "rakyat biasa. Tadi malam, seorang warga bernama '%s' ditemukan tewas.") % (self.player_killed)
+        else:
+            str_desc = ""
+            if self.player_killed is None:
+                str_desc += (
+                    "Rapat bejalan alot. Walau telah dilakukan pemilihan sebanyak 2x, "
+                    "perundingan para warga tidak menghasilkan apapun. "
+                    "Tidak ada yang terbunuh di siang itu."
+                )
+            else:
+                str_desc += (
+                    "Setelah berunding, warga desa memilih untuk membunuh '%s'. ") % (self.player_name[self.player_killed])
+                if self.is_werewolf[self.player_killed]:
+                    str_desc += (
+                        "Untungnya dia adalah seorang werewolf.")
+                else:
+                    str_desc += (
+                        "Namun sayangnya dia hanyalah seorang warga biasa tak berdosa...")
+            str_desc += "\n\n"
+
+            data[protocol.DESCRIPTION] = str_desc + (
+                "Saat ini, hari telah malam, warga desa yang "
+                "kelelahan kini mulai perlahan terlelap. Werewolf pun "
+                "beraksi...")
+        self.player_killed = None
         self.broadcast(data)
 
         if self.time == protocol.TIME_NIGHT:
@@ -182,10 +212,14 @@ class Server:
         self.broadcast(data)
 
     def game_over(self, winner):
+        str_desc = "Permainan telah berakhir. "
+        if self.player_killed is not None:
+            str_desc += (
+                "Pemain '%s' terbunuh.\n") % (self.player_name[self.player_killed])
         data = {
             protocol.METHOD: protocol.METHOD_GAME_OVER,
             protocol.WINNER: winner,
-            protocol.DESCRIPTION: "Winner is %s." % (winner)
+            protocol.DESCRIPTION: str_desc + "Pemenangnya adalah: %s!" % (winner)
         }
         self.broadcast(data)
 

@@ -296,8 +296,8 @@ class Handler:
                 })
                 self.connection.send(data)
                 return
-            player_killed = message[protocol.PLAYER_KILLED]
-            self.server.is_alive[player_killed] = False
+            self.server.player_killed = message[protocol.PLAYER_KILLED]
+            self.server.is_alive[self.server.player_killed] = False
             self.server.change_phase()
         else:
             self.server.vote_now()

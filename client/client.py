@@ -18,37 +18,13 @@ class Client:
 
         self.handler = Handler(self)
         self.connection = Connection(self, self.handler, host, port)
-
-        self.server_last_messages = []
-        self.last_messages = {}
+        self.cv = threading.Condition()
 
     def close(self):
         if not self.keep_running:
             return
         self.keep_running = False
         self.connection.close()
-
-    def server_recv(self, timeout=-1):
-        t = time.time()
-        while (self.keep_running and
-                not self.connection.server_messages and
-                ((time.time() - t) < timeout if timeout >= 0 else True)):
-            time.sleep(self.poll_time)
-        if self.connection.server_messages:
-            return self.connection.server_messages.pop(0)
-        else:
-            return None
-
-    def recv(self, timeout=-1):
-        t = time.time()
-        while (self.keep_running and
-                not self.connection.messages and
-                ((time.time() - t) < timeout if timeout >= 0 else True)):
-            time.sleep(self.poll_time)
-        if self.connection.messages:
-            return self.connection.messages.pop(0)
-        else:
-            return None
 
     def join(self, username):
         data = json.dumps({
@@ -57,38 +33,36 @@ class Client:
             protocol.PLAYER_UDP_ADDRESS: self.connection.address,
             protocol.PLAYER_UDP_PORT: self.connection.port
         })
+        self.server_state = protocol.METHOD_JOIN
         self.connection.server_send(data)
-        return self.server_recv()
 
     def leave(self):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_LEAVE
         })
+        self.server_state = protocol.METHOD_LEAVE
         self.connection.server_send(data)
-        return self.server_recv()
 
     def ready(self):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_READY
         })
+        self.server_state = protocol.METHOD_READY
         self.connection.server_send(data)
-        return self.server_recv()
 
     def client_address(self):
-        while True:
-            data = json.dumps({
-                protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
-            })
-            self.connection.server_send(data)
-            ret = self.server_recv()
-            if protocol.CLIENTS in ret:
-                return ret
+        data = json.dumps({
+            protocol.METHOD: protocol.METHOD_CLIENT_ADDRESS
+        })
+        self.server_state = protocol.METHOD_CLIENT_ADDRESS
+        self.connection.server_send(data)
 
     def prepare_proposal(self, proposal_id, address):
         data = json.dumps({
             protocol.METHOD: protocol.METHOD_PREPARE_PROPOSAL,
             protocol.PROPOSAL_ID: proposal_id
         })
+        self.state = protocol.METHOD_PREPARE_PROPOSAL
         self.connection.send(data, address, unreliable=True)
 
     def prepare_proposal_accept(self, proposal_id, previous_accepted_kpu_id, address):
@@ -113,6 +87,7 @@ class Client:
             protocol.PROPOSAL_ID: proposal_id,
             protocol.KPU_ID: kpu_id
         })
+        self.state = protocol.METHOD_ACCEPT_PROPOSAL
         self.connection.send(data, address, unreliable=True)
 
     def accept_proposal_accept(self, kpu_id, address):
@@ -127,6 +102,7 @@ class Client:
             protocol.KPU_ID: kpu_id,
             protocol.DESCRIPTION: protocol.DESC_KPU_SELECTED
         })
+        self.server_state = protocol.METHOD_ACCEPTED_PROPOSAL
         self.connection.server_send(data)
 
     def accept_proposal_reject(self, address):
@@ -141,6 +117,7 @@ class Client:
             protocol.METHOD: protocol.METHOD_VOTE_CIVILIAN,
             protocol.PLAYER_ID: player_id
         })
+        self.state = protocol.METHOD_VOTE_CIVILIAN
         self.connection.send(data, address)
 
     def vote_werewolf(self, player_id, address):
@@ -148,6 +125,7 @@ class Client:
             protocol.METHOD: protocol.METHOD_VOTE_WEREWOLF,
             protocol.PLAYER_ID: player_id
         })
+        self.state = protocol.METHOD_VOTE_WEREWOLF
         self.connection.send(data, address)
 
     def vote_result_civilian(self, vote_status, vote_result, player_killed=None):
@@ -159,6 +137,7 @@ class Client:
         if player_killed is not None:
             data[protocol.PLAYER_KILLED] = player_killed
         data = json.dumps(data)
+        self.server_state = protocol.METHOD_VOTE_RESULT_CIVILIAN
         self.connection.server_send(data)
 
     def vote_result_werewolf(self, vote_status, vote_result, player_killed=None):
@@ -170,6 +149,7 @@ class Client:
         if player_killed is not None:
             data[protocol.PLAYER_KILLED] = player_killed
         data = json.dumps(data)
+        self.server_state = protocol.METHOD_VOTE_RESULT_CIVILIAN
         self.connection.server_send(data)
 
 class Connection:
@@ -179,6 +159,7 @@ class Connection:
         self.timeout = 0.5
 
         self.client = client
+        self.handler = handler
 
         # connect to server host:port
         self.server_host = host
@@ -205,8 +186,6 @@ class Connection:
         self.client.verbose and print("Listening UDP at %s:%d" % (self.address, self.port))
 
         self.lock = threading.Lock()
-        self.server_messages = []
-        self.messages = []
         self.server_thread = threading.Thread(target=self.server_recv)
         self.server_thread.start()
         self.thread = threading.Thread(target=self.recv)
@@ -255,6 +234,8 @@ class Connection:
                 # server disconnected
                 if not data:
                     self.client.keep_running = False
+                    with self.client.cv:
+                        self.client.cv.notify_all()
                     break
 
                 message = data.decode('utf-8').strip("\n")
@@ -264,7 +245,7 @@ class Connection:
                     message = self._split("".join(messages))
                     for m in message:
                         self.client.verbose and print("Recv:", m)
-                        self.server_messages.append(m)
+                        self.handler.server_handle(m)
                     messages.clear()
 
             except select.error:
@@ -294,7 +275,7 @@ class Connection:
                     message = self._split("".join(messages[address]))
                     for m in message:
                         self.client.verbose and print("Recv from %s:%d:" % (address), m)
-                        self.messages.append((address, m))
+                        self.handler.handle(m, address)
                     messages[address].clear()
 
             except select.error:
