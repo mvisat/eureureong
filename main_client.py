@@ -79,6 +79,8 @@ class Game(Client):
                 print("Kamu sedang tidur nyenyak...")
             return
 
+        if self.vote_number > 1:
+            print("Hmm, sepertinya pemilihan tadi tidak mencapai kesepakatan.")
         print()
         print("--- Pemilihan ke-%d ---" % (self.vote_number))
         print("Daftar pemain:")
@@ -115,6 +117,7 @@ class Game(Client):
             if not self.keep_running:
                 return None
             try:
+                print()
                 kill_id = int(input("Masukkan ID pemain untuk dibunuh: "))
                 if kill_id not in set_to_kill_id:
                     raise(ValueError)
@@ -133,13 +136,13 @@ class Game(Client):
             while self.keep_running:
 
                 if not self.server_state or self.server_state == protocol.METHOD_JOIN:
-                    if not self.server_last_status or self.server_last_status != protocol.STATUS_OK:
-                        self.username = None
-                        while not self.username:
-                            self.username = input("Masukkan namamu: ").strip()
-                        self.join(self.username)
-
-                    elif self.server_last_status == protocol.STATUS_OK:
+                    if not self.is_joined:
+                        player_name = None
+                        while not player_name:
+                            player_name = input("Masukkan namamu: ").strip()
+                        self.join(player_name)
+                    else:
+                        self.player_name = player_name
                         print("Tekan tombol [Enter] jika kamu sudah siap!", end=' ')
                         input()
                         if not self.keep_running:

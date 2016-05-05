@@ -1,4 +1,3 @@
-import select
 import threading
 
 from common import protocol
@@ -11,13 +10,10 @@ class Handler:
 
         self.client.player_id = None
         self.client.clients = None
+        self.client.is_joined = False
 
         self.client.state = None
-        self.client.last_status = None
-
         self.client.server_state = None
-        self.client.server_last_status = None
-        self.client.server_last_description = None
 
         self.is_leader_election = False
         self.handler_lock = threading.Lock()
@@ -26,7 +22,6 @@ class Handler:
         with self.handler_lock:
             if protocol.STATUS in message:
                 status = message[protocol.STATUS]
-                self.client.last_status = status
                 state = self.client.state
 
                 if state == protocol.METHOD_PREPARE_PROPOSAL:
@@ -119,12 +114,12 @@ class Handler:
         with self.handler_lock:
             if protocol.STATUS in message:
                 status = message[protocol.STATUS]
-                self.client.server_last_status = status
                 server_state = self.client.server_state
 
                 if server_state == protocol.METHOD_JOIN:
                     if status == protocol.STATUS_OK:
                         if protocol.PLAYER_ID in message:
+                            self.client.is_joined = True
                             self.client.player_id = message[protocol.PLAYER_ID]
                     else:
                         if protocol.DESCRIPTION in message:
@@ -142,31 +137,13 @@ class Handler:
                 elif server_state == protocol.METHOD_CLIENT_ADDRESS:
                     if status == protocol.STATUS_OK:
                         if protocol.CLIENTS in message:
-                            clients = message[protocol.CLIENTS]
-                            # if not self.client.clients:
-                            #     self.client.clients = clients
-                            # elif len(clients) == len(self.client.clients):
-                            #     for cur_client, last_client in zip(clients, self.client.clients):
-                            #         if cur_client != last_client:
-                            #             username = cur_client[protocol.PLAYER_USERNAME]
-                            #             role = cur_client[protocol.ROLE]
-                            #             print("A %s named %s has been killed!" % (role, username))
-                            self.client.clients = clients
+                            self.client.clients = message[protocol.CLIENTS]
 
                             if self.is_leader_election:
                                 self.is_leader_election = False
                                 self.client.server_state = protocol.METHOD_LEADER_ELECTION
                                 with self.client.cv:
                                     self.client.cv.notify_all()
-
-                elif server_state == protocol.METHOD_VOTE_RESULT_CIVILIAN:
-                    pass
-
-                elif server_state == protocol.METHOD_VOTE_RESULT_WEREWOLF:
-                    pass
-
-                elif server_state == protocol.METHOD_KPU_SELECTED:
-                    pass
 
             elif protocol.METHOD in message:
                 method = message[protocol.METHOD]
@@ -180,7 +157,7 @@ class Handler:
                         self.client.player_role = role
                         print()
                         print("--- EUREUREONG | THE WEREWOLVES ---")
-                        print("Hai %s!" % (self.client.username))
+                        print("Hai %s!" % (self.client.player_name))
                         print("Tugasmu adalah menjadi: %s." % (role))
 
                     if protocol.FRIEND in message:
@@ -199,6 +176,8 @@ class Handler:
 
                     self.is_leader_election = True
                     self.client.client_address()
+
+                    self.client.vote_number = 0
 
                 elif method == protocol.METHOD_CHANGE_PHASE:
                     if protocol.TIME in message:
@@ -219,7 +198,6 @@ class Handler:
                     self.client.vote_number = 0
 
                 elif method == protocol.METHOD_KPU_SELECTED:
-                    self.client.vote_number = 0
                     if protocol.KPU_ID in message:
                         self.client.kpu_id = message[protocol.KPU_ID]
                         for client in self.client.clients:
@@ -237,7 +215,7 @@ class Handler:
 
                 elif method == protocol.METHOD_GAME_OVER:
                     if protocol.DESCRIPTION in message:
-                        print()                        
+                        print()
                         print(message[protocol.DESCRIPTION])
 
                     with self.client.cv:

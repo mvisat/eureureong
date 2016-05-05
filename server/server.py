@@ -161,7 +161,7 @@ class Server:
             data[protocol.DESCRIPTION] = (
                 "Dan pagi hari telah menjelang, warga desa perlahan "
                 "terbangun dari tidurnya. Semuanya karakter berubah menjadi "
-                "rakyat biasa. Tadi malam, seorang warga bernama '%s' ditemukan tewas.") % (self.player_killed)
+                "rakyat biasa. Tadi malam, seorang warga bernama '%s' ditemukan tewas.") % (self.player_name[self.player_killed])
         else:
             str_desc = ""
             if self.player_killed is None:
