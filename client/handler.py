@@ -90,12 +90,9 @@ class Handler:
                         for kill_id, voters in self.vote_count.items():
                             vote = len(voters)
                             count += vote
-                            vote_array.append([kill_id, vote])
-                            if vote > vote_max:
-                                vote_max = vote
+                            if vote >= (quorum//2+1):
                                 player_killed = kill_id
-                            elif vote == vote_max:
-                                player_killed = None
+                            vote_array.append([kill_id, vote])
 
                         if count >= quorum:
                             if player_killed is None:

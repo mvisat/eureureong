@@ -287,9 +287,9 @@ class Connection(threading.Thread):
         if isinstance(message, bytes):
             pass
         elif isinstance(message, str):
-            message = message.encode()
+            message = message.encode() + b"\n"
         else:
-            message = json.dumps(message).encode()
+            message = (json.dumps(message) + "\n").encode()
 
         total_sent = 0
         while self.server.keep_running and total_sent < len(message):
